@@ -5,23 +5,21 @@ import './index.scss';
 const width = 500;
 const height = 500;
 
+const points = [
+    { x: 200, y: 200, label: 'Cluster 1', width: 100, height: 40 },
+    { x: 400, y: 300, label: 'Cluster 2', width: 100, height: 40 },
+    { x: 400, y: 315, label: 'Cluster 3', width: 100, height: 40 },
+    { x: 385, y: 307.5, label: 'Cluster 4', width: 100, height: 40 },
+];
+
 const graph = ({
-    nodes: [
-        { x: 200, y: 200, label: 'Cluster 1', width: 100, height: 40 },
-        { fx: 200, fy: 200, label: null },
-        { x: 400, y: 300, label: 'Cluster 2', width: 100, height: 40 },
-        { fx: 400, fy: 300, label: null },
-        { x: 380, y: 290, label: 'Cluster 3', width: 100, height: 40 },
-        { fx: 380, fy: 290, label: null },
-        { x: 415, y: 305, label: 'Cluster 4', width: 100, height: 40 },
-        { fx: 415, fy: 305, label: null },
-    ],
-    links: [
-        { source: 1, target: 0 },
-        { source: 3, target: 2 },
-        { source: 5, target: 4 },
-        { source: 7, target: 6 },
-    ],
+    nodes: points.flatMap(p => ([
+        { x: p.x, y: p.y, label: p.label, width: p.width, height: p.height },
+        { fx: p.x, fy: p.y, label: null },
+    ])),
+    links: points.map((p, i) => ({
+        source: i*2, target: i*2+1,
+    })),
 });
 
 const collisionForce = forceCollideRects()
@@ -55,7 +53,7 @@ const simulation = d3
     .force("link", d3.forceLink(graph.links))
     .on("tick", tick);
 
-simulation.tick(50);
+simulation.tick(100);
 
 
 link = link.data(graph.links)

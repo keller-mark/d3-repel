@@ -4,94 +4,105 @@ function constant(_) {
     return function () { return _ }
 }
 
-function jiggle(random) {
-    return (random() - 0.5) * 1e-6;
+function jiggle(val) {
+    return val + (Math.random() - 0.5) * 1e-6;
 }
 
+// Reference: https://bl.ocks.org/cmgiven/547658968d365bcc324f3e62e175709b
 export function forceCollideRects(radius) {
-    var nodes,
-        radii,
-        random,
-        strength = 1,
-        iterations = 1;
+    let nodes;
+    let masses;
+    let strength = 1;
+    let iterations = 1;
     
-    var sizes,
-        size = constant([0, 0]);
+    let sizes;
+    let size = constant([0, 0]);
   
     if (typeof radius !== "function") radius = constant(radius == null ? 1 : +radius);
     
-    function x(d) {
-      return d.x + d.vx;
+    function xCenter(d) {
+      return d.x + d.vx + sizes[d.index][0] / 2;
     }
   
-    function y(d) {
-      return d.y + d.vy;
+    function yCenter(d) {
+      return d.y + d.vy + sizes[d.index][1] / 2;
     }
   
     function force() {
-      var i, n = nodes.length,
-          tree,
-          node,
-          size,
-          xi,
-          yi,
-          ri,
-          ri2;
-  
-      for (var k = 0; k < iterations; ++k) {
-        tree = quadtree(nodes, x, y).visitAfter(prepare);
-        for (i = 0; i < n; ++i) {
-          node = nodes[i];
-          ri = radii[node.index], ri2 = ri * ri;
-          xi = node.x + node.vx;
-          yi = node.y + node.vy;
-          tree.visit(apply);
-        }
-      }
-  
-      function apply(quad, x0, y0, x1, y1) {
-        var data = quad.data, rj = quad.r, r = ri + rj;
-        if (data) {
-          if (data.index > node.index) {
-            var x = xi - data.x - data.vx,
-                y = yi - data.y - data.vy,
-                l = x * x + y * y;
-            if (l < r * r) {
-              if (x === 0) x = jiggle(random), l += x * x;
-              if (y === 0) y = jiggle(random), l += y * y;
-              l = (r - (l = Math.sqrt(l))) / l * strength;
-              node.vx += (x *= l) * (r = (rj *= rj) / (ri2 + rj));
-              node.vy += (y *= l) * r;
-              data.vx -= x * (r = 1 - r);
-              data.vy -= y * r;
+        let node;
+        let size;
+        let mass;
+        let xi;
+        let yi;
+        let i = -1;
+
+        while (++i < iterations) { iterate(); }
+
+        function iterate() {
+            let j = -1;
+            let tree = quadtree(nodes, xCenter, yCenter).visitAfter(prepare);
+
+            while(++j < nodes.length) {
+                node = nodes[j];
+                size = sizes[j];
+                mass = masses[j];
+                xi = xCenter(node);
+                yi = yCenter(node);
+
+                tree.visit(apply);
             }
-          }
-          return;
         }
-        return x0 > xi + r || x1 < xi - r || y0 > yi + r || y1 < yi - r;
-      }
+
+    
+        function apply(quad, x0, y0, x1, y1) {
+            let data = quad.data;
+            let xSize = (size[0] + quad.size[0]) / 2;
+            let ySize = (size[1] + quad.size[1]) / 2;
+
+            if (data) {
+                if (data.index <= node.index) { return };
+
+                let x = jiggle(xi - xCenter(data));
+                let y = jiggle(yi - yCenter(data));
+                let xd = Math.abs(x) - xSize;
+                let yd = Math.abs(y) - ySize;
+
+                if(xd < 0 && yd < 0) {
+                    let l = Math.sqrt(x * x + y * y);
+                    let m = masses[data.index] / (mass + masses[data.index]);
+
+                    if(Math.abs(xd) < Math.abs(yd)) {
+                        node.vx -= (x *= xd / l * strength) * m;
+                        data.vx += x * (1 - m);
+                    } else {
+                        node.vy -= (y *= yd / l * strength) * m;
+                        data.vy += y * (1 - m);
+                    }
+                }
+            }
+
+            return x0 > xi + xSize || x1 < xi - xSize || y0 > yi + ySize || y1 < yi - ySize;
+        }
     }
   
     function prepare(quad) {
-      if (quad.data) return quad.r = radii[quad.data.index];
-      for (var i = quad.r = 0; i < 4; ++i) {
-        if (quad[i] && quad[i].r > quad.r) {
-          quad.r = quad[i].r;
+        if (quad.data) {
+            quad.size = sizes[quad.data.index];
+        } else {
+            quad.size = [0, 0];
+            let i = -1;
+            while(++i < 4) {
+                if(quad[i] && quad[i].size) {
+                    quad.size[0] = Math.max(quad.size[0], quad[i].size[0]);
+                    quad.size[1] = Math.max(quad.size[1], quad[i].size[1]);
+                }
+            }
         }
-      }
     }
   
-    function initialize() {
-      if (!nodes) return;
-      var i, n = nodes.length, node;
-      radii = new Array(n);
-      for (i = 0; i < n; ++i) node = nodes[i], radii[node.index] = +radius(node, i, nodes);
-    }
-  
-    force.initialize = function(_nodes, _random) {
-      nodes = _nodes;
-      random = _random;
-      initialize();
+    force.initialize = function(_) {
+        sizes = (nodes = _).map(size);
+        masses = sizes.map(d => d[0] + d[1]);
     };
   
     force.iterations = function(_) {
@@ -101,10 +112,7 @@ export function forceCollideRects(radius) {
     force.strength = function(_) {
       return arguments.length ? (strength = +_, force) : strength;
     };
-  
-    force.radius = function(_) {
-      return arguments.length ? (radius = typeof _ === "function" ? _ : constant(+_), initialize(), force) : radius;
-    };
+
     
     force.size = function (_) {
           return (arguments.length
