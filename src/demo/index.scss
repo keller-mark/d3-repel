@@ -10,11 +10,12 @@ svg {
 }
 
 .node {
-    fill: #ccc;
-    stroke: #000;
+    fill: red;
+    stroke: red;
     stroke-width: 1.5px;
 }
 
 .node.hidden {
-    fill: red;
+    fill: #ccc;
+    stroke: #ccc;
 }

@@ -13,13 +13,10 @@ const points = [
 ];
 
 const graph = ({
-    nodes: points.flatMap(p => ([
-        { x: p.x, y: p.y, label: p.label, width: p.width, height: p.height },
-        { fx: p.x, fy: p.y, label: null },
-    ])),
-    links: points.map((p, i) => ({
-        source: i*2, target: i*2+1,
+    nodes: points.map(p => ({
+        x: p.x, y: p.y, label: p.label, width: p.width, height: p.height,
     })),
+    links: [],
 });
 
 const collisionForce = forceCollideRects()
@@ -65,6 +62,16 @@ node = node.data(graph.nodes)
     .attr("r", 6)
     .classed("node", true)
     .classed("hidden", d => d.fx === undefined);
+
+const pointRects = svg
+    .selectAll(".node2")
+    .data(points)
+    .join("circle")
+    .attr("r", 3)
+    .attr("cx", d => d.x)
+    .attr("cy", d => d.y)
+    .classed("node", true)
+    .classed("hidden", false);
 
 const labels = svg
     .selectAll(".label")
