@@ -74,7 +74,7 @@ const baseConfig = {
         }),
         html({
             title: pkg.name,
-            publicPath: '/histogram.gl/',
+            publicPath: '/d3-repel/',
             fileName: OUTPUT_HTML,
             template: ({ publicPath, title }) => {
                 return htmlFromTemplate({
